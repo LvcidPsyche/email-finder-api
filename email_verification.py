@@ -12,6 +12,7 @@ import os
 # Simple in-memory cache for MX records (1 hour TTL)
 _mx_cache = {}
 MX_CACHE_TTL = 3600  # 1 hour in seconds
+MAX_CACHE_SIZE = 1000  # Maximum number of cached domains
 
 
 def get_mx_cache_key(domain: str) -> str:
@@ -33,7 +34,25 @@ def get_cached_mx(domain: str) -> Optional[dict]:
 
 
 def cache_mx_records(domain: str, mx_data: dict):
-    """Cache MX records for a domain."""
+    """Cache MX records for a domain with automatic cleanup."""
+    # Cleanup expired entries if cache is getting large
+    if len(_mx_cache) >= MAX_CACHE_SIZE:
+        current_time = time.time()
+        expired_keys = [
+            key for key, (_, timestamp) in _mx_cache.items()
+            if current_time - timestamp >= MX_CACHE_TTL
+        ]
+        for key in expired_keys:
+            del _mx_cache[key]
+
+        # If still too large after cleanup, remove oldest entries
+        if len(_mx_cache) >= MAX_CACHE_SIZE:
+            # Sort by timestamp and remove oldest 20%
+            sorted_items = sorted(_mx_cache.items(), key=lambda x: x[1][1])
+            remove_count = MAX_CACHE_SIZE // 5
+            for key, _ in sorted_items[:remove_count]:
+                del _mx_cache[key]
+
     cache_key = get_mx_cache_key(domain)
     _mx_cache[cache_key] = (mx_data, time.time())
 

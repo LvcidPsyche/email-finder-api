@@ -14,6 +14,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 DB_PATH = os.getenv("DATABASE_URL", "sqlite:///./data.db").replace("sqlite:///", "")
 JWT_SECRET = os.getenv("JWT_SECRET", "change-this-jwt-secret-in-production")
+# Security check - fail if using default JWT secret
+if JWT_SECRET == "change-this-jwt-secret-in-production":
+    import sys
+    print("\n\033[91mSECURITY ERROR: Using default JWT_SECRET!\033[0m")
+    print("Set a secure JWT_SECRET in your .env file before running in production.")
+    print("Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'\n")
+    sys.exit(1)
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_DAYS = 30
 

@@ -131,41 +131,8 @@ def get_domain_patterns(domain: str) -> list[dict]:
 
 
 def check_mx_records(domain: str) -> dict:
-    """Check MX records for a domain using dnspython."""
-    try:
-        answers = dns.resolver.resolve(domain, "MX")
-        mx_records = []
-        for rdata in answers:
-            mx_records.append({
-                "priority": rdata.preference,
-                "host": str(rdata.exchange).rstrip("."),
-            })
-        mx_records.sort(key=lambda x: x["priority"])
-        return {
-            "domain": domain,
-            "has_mx": True,
-            "accepts_email": True,
-            "mx_records": mx_records,
-            "record_count": len(mx_records),
-        }
-    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.NoNameservers) as e:
-        return {
-            "domain": domain,
-            "has_mx": False,
-            "accepts_email": False,
-            "mx_records": [],
-            "record_count": 0,
-            "error": str(type(e).__name__),
-        }
-    except Exception as e:
-        return {
-            "domain": domain,
-            "has_mx": False,
-            "accepts_email": False,
-            "mx_records": [],
-            "record_count": 0,
-            "error": str(e),
-        }
+    """Check MX records for a domain (with caching via email_verification module)."""
+    return check_mx_records_cached(domain)
 
 
 # --- Routes ---
@@ -324,7 +291,7 @@ async def get_patterns(domain: str, key_info: dict = Depends(auth.verify_api_key
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8770"))
     host = os.getenv("HOST", "0.0.0.0")
-    uvicorn.run("main_enhanced:app", host=host, port=port, reload=True)
+    uvicorn.run("main:app", host=host, port=port, reload=True)
 
 # --- Enhanced endpoints (Phase 2) ---
 
@@ -477,10 +444,3 @@ async def export_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={job_type}_results.csv"}
     )
-
-
-# Update check_mx_records to use cached version
-def check_mx_records(domain: str) -> dict:
-    """Check MX records (now with caching)."""
-    return check_mx_records_cached(domain)
-

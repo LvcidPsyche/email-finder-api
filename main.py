@@ -325,3 +325,162 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", "8770"))
     host = os.getenv("HOST", "0.0.0.0")
     uvicorn.run("main_enhanced:app", host=host, port=port, reload=True)
+
+# --- Enhanced endpoints (Phase 2) ---
+
+from email_verification import verify_email_smtp, check_mx_records_cached, get_domain_info, detect_catch_all
+from csv_handler import parse_csv_upload, export_results_to_csv, export_verification_results_to_csv
+from fastapi import UploadFile, File, BackgroundTasks
+from fastapi.responses import StreamingResponse
+import io
+
+
+class VerifyEmailRequest(BaseModel):
+    email: str
+
+
+class BulkVerifyRequest(BaseModel):
+    emails: list[str]
+
+
+class DomainInfoRequest(BaseModel):
+    domain: str
+
+
+@app.post("/api/verify-email")
+async def verify_single_email(body: VerifyEmailRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
+    """Verify a single email address via SMTP (checks if mailbox exists)."""
+    result = await verify_email_smtp(body.email)
+    return {
+        "success": True,
+        **result
+    }
+
+
+@app.post("/api/bulk-verify")
+async def bulk_verify_emails(body: BulkVerifyRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
+    """Verify multiple email addresses (max 50 per request)."""
+    if len(body.emails) > 50:
+        raise HTTPException(status_code=400, detail="Maximum 50 emails per request")
+    
+    results = []
+    for email in body.emails:
+        result = await verify_email_smtp(email)
+        results.append(result)
+    
+    return {
+        "success": True,
+        "results": results,
+        "total": len(results)
+    }
+
+
+@app.post("/api/domain-info")
+async def get_domain_information(body: DomainInfoRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
+    """Get enriched information about a domain (email provider, MX records, catch-all detection)."""
+    info = get_domain_info(body.domain)
+    return {
+        "success": True,
+        **info
+    }
+
+
+@app.post("/api/detect-catch-all")
+async def check_catch_all(body: DomainInfoRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
+    """Detect if domain uses catch-all email (accepts all addresses)."""
+    result = detect_catch_all(body.domain)
+    return {
+        "success": True,
+        **result
+    }
+
+
+@app.post("/api/bulk-upload-csv")
+async def upload_csv_bulk(
+    file: UploadFile = File(...),
+    domain: Optional[str] = None,
+    key_info: dict = Depends(auth.verify_api_key_dependency)
+):
+    """
+    Upload CSV file with names for bulk email finding.
+    
+    CSV format: first_name, last_name, domain (domain column optional if provided as parameter)
+    """
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="File must be a CSV")
+    
+    # Read CSV content
+    contents = await file.read()
+    csv_content = contents.decode('utf-8')
+    
+    # Parse CSV
+    has_domain_col = domain is None
+    entries = parse_csv_upload(csv_content, has_domain_column=has_domain_col)
+    
+    if len(entries) > 500:
+        raise HTTPException(status_code=400, detail="Maximum 500 rows per CSV upload")
+    
+    # Process each entry
+    results = []
+    for entry in entries:
+        use_domain = entry.get('domain') or domain
+        if not use_domain:
+            continue
+        
+        patterns = generate_email_patterns(entry['first_name'], entry['last_name'], use_domain)
+        results.append({
+            "person": {"first_name": entry['first_name'], "last_name": entry['last_name']},
+            "domain": use_domain,
+            "emails": patterns,
+            "total_results": len(patterns)
+        })
+    
+    return {
+        "success": True,
+        "total_processed": len(results),
+        "results": results
+    }
+
+
+@app.get("/api/export-csv/{job_type}")
+async def export_csv(
+    job_type: str,
+    data: str = None,
+    key_info: dict = Depends(auth.verify_api_key_dependency)
+):
+    """
+    Export results as CSV.
+    
+    job_type: 'email-find' or 'verification'
+    data: JSON string of results (pass via query param or have results stored by job_id)
+    """
+    # This is simplified - in production, you'd store job results and retrieve by job_id
+    if not data:
+        raise HTTPException(status_code=400, detail="No data provided for export")
+    
+    import json
+    try:
+        results = json.loads(data)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid JSON data")
+    
+    if job_type == "email-find":
+        csv_content = export_results_to_csv(results)
+    elif job_type == "verification":
+        csv_content = export_verification_results_to_csv(results)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid job_type. Use 'email-find' or 'verification'")
+    
+    # Return as downloadable CSV
+    return StreamingResponse(
+        io.StringIO(csv_content),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={job_type}_results.csv"}
+    )
+
+
+# Update check_mx_records to use cached version
+def check_mx_records(domain: str) -> dict:
+    """Check MX records (now with caching)."""
+    return check_mx_records_cached(domain)
+

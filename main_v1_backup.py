@@ -1,58 +1,30 @@
 import dns.resolver
 from fastapi import FastAPI, Request, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import Optional
-from dotenv import load_dotenv
 import uvicorn
-import os
-import time
-from contextlib import asynccontextmanager
 
-# Load environment variables
-load_dotenv()
-
-# Import our auth and database modules
-import database
-import auth
-
-# Lifespan context manager for startup/shutdown
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: Initialize database
-    await database.init_database()
-    print("✓ Database initialized")
-    yield
-    # Shutdown: cleanup if needed
-    print("✓ Shutting down")
-
-app = FastAPI(
-    title="Email Finder API",
-    version="2.0.0",
-    description="Find and verify professional email addresses",
-    lifespan=lifespan
-)
+app = FastAPI(title="Email Finder API", version="1.0.0")
 
 # CORS middleware
-cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Add custom middleware
-app.middleware("http")(auth.rate_limit_middleware)
-app.middleware("http")(auth.log_request_middleware)
-
 # Mount static files and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+# Valid API keys
+VALID_API_KEYS = {"demo-key-2024"}
 
 
 # --- Models ---
@@ -77,14 +49,12 @@ class BulkFindRequest(BaseModel):
     names: list[NameEntry]
 
 
-class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str
+# --- Auth dependency ---
 
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+async def verify_api_key(x_api_key: str = Header(...)):
+    if x_api_key not in VALID_API_KEYS:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return x_api_key
 
 
 # --- Helper functions ---
@@ -148,14 +118,32 @@ def check_mx_records(domain: str) -> dict:
             "mx_records": mx_records,
             "record_count": len(mx_records),
         }
-    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.NoNameservers) as e:
+    except dns.resolver.NoAnswer:
         return {
             "domain": domain,
             "has_mx": False,
             "accepts_email": False,
             "mx_records": [],
             "record_count": 0,
-            "error": str(type(e).__name__),
+            "error": "No MX records found",
+        }
+    except dns.resolver.NXDOMAIN:
+        return {
+            "domain": domain,
+            "has_mx": False,
+            "accepts_email": False,
+            "mx_records": [],
+            "record_count": 0,
+            "error": "Domain does not exist",
+        }
+    except dns.resolver.NoNameservers:
+        return {
+            "domain": domain,
+            "has_mx": False,
+            "accepts_email": False,
+            "mx_records": [],
+            "record_count": 0,
+            "error": "No nameservers available for domain",
         }
     except Exception as e:
         return {
@@ -175,73 +163,8 @@ async def landing_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "ok",
-        "version": "2.0.0",
-        "timestamp": int(time.time())
-    }
-
-
-# --- Auth endpoints ---
-
-@app.post("/api/auth/register")
-async def register(body: RegisterRequest):
-    """Register a new user."""
-    user_id = await database.create_user(body.email, body.password)
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    # Auto-create a free tier API key
-    api_key = await database.create_api_key_for_user(user_id, plan_tier="free")
-
-    # Create JWT token
-    token = database.create_jwt_token(user_id, body.email)
-
-    return {
-        "success": True,
-        "message": "Registration successful",
-        "token": token,
-        "api_key": api_key,
-        "plan": "free"
-    }
-
-
-@app.post("/api/auth/login")
-async def login(body: LoginRequest):
-    """Login and get JWT token."""
-    user = await database.authenticate_user(body.email, body.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-
-    token = database.create_jwt_token(user["id"], user["email"])
-
-    return {
-        "success": True,
-        "token": token,
-        "user": {
-            "id": user["id"],
-            "email": user["email"]
-        }
-    }
-
-
-@app.get("/api/usage")
-async def get_usage(key_info: dict = Depends(auth.verify_api_key_dependency)):
-    """Get usage statistics for the current API key."""
-    stats = await database.get_usage_stats(key_info["api_key_id"], days=1)
-    return {
-        "success": True,
-        **stats
-    }
-
-
-# --- Email finding endpoints ---
-
 @app.post("/api/find-email")
-async def find_email(body: FindEmailRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
+async def find_email(body: FindEmailRequest, api_key: str = Depends(verify_api_key)):
     domain = body.domain.lower().strip()
     first_name = body.first_name.strip()
     last_name = body.last_name.strip()
@@ -263,7 +186,7 @@ async def find_email(body: FindEmailRequest, key_info: dict = Depends(auth.verif
 
 
 @app.post("/api/verify-domain")
-async def verify_domain(body: VerifyDomainRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
+async def verify_domain(body: VerifyDomainRequest, api_key: str = Depends(verify_api_key)):
     domain = body.domain.lower().strip()
     if not domain:
         raise HTTPException(status_code=400, detail="domain is required")
@@ -273,7 +196,7 @@ async def verify_domain(body: VerifyDomainRequest, key_info: dict = Depends(auth
 
 
 @app.post("/api/bulk-find")
-async def bulk_find(body: BulkFindRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
+async def bulk_find(body: BulkFindRequest, api_key: str = Depends(verify_api_key)):
     domain = body.domain.lower().strip()
     names = body.names
 
@@ -304,7 +227,7 @@ async def bulk_find(body: BulkFindRequest, key_info: dict = Depends(auth.verify_
 
 
 @app.get("/api/patterns/{domain}")
-async def get_patterns(domain: str, key_info: dict = Depends(auth.verify_api_key_dependency)):
+async def get_patterns(domain: str, api_key: str = Depends(verify_api_key)):
     domain = domain.lower().strip()
     if not domain:
         raise HTTPException(status_code=400, detail="domain is required")
@@ -322,6 +245,4 @@ async def get_patterns(domain: str, key_info: dict = Depends(auth.verify_api_key
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "8770"))
-    host = os.getenv("HOST", "0.0.0.0")
-    uvicorn.run("main_enhanced:app", host=host, port=port, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8770, reload=True)

@@ -166,6 +166,23 @@ async def authenticate_user(email: str, password: str) -> Optional[dict]:
             return None
 
 
+async def get_user_id_by_email(email: str) -> Optional[int]:
+    """Get user ID by email address.
+
+    Args:
+        email: User's email address
+
+    Returns:
+        User ID if found and active, None otherwise
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("""
+            SELECT id FROM users WHERE email = ? AND is_active = 1
+        """, (email,)) as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else None
+
+
 async def create_api_key_for_user(user_id: int, plan_tier: str = "free") -> str:
     """Create a new API key for a user.
 

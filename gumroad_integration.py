@@ -118,17 +118,14 @@ async def process_gumroad_purchase(webhook_data: dict, database_module) -> dict:
     user_id = await database_module.create_user(email, generate_random_password())
 
     if not user_id:
-        # User already exists, fetch their ID
-        user = await database_module.authenticate_user(email, None)  # This won't work as-is
-        # Better: add a get_user_by_email function to database module
-        # For now, assume user_id=None means existing user - handle carefully
-        # In production, add: async def get_user_id_by_email(email: str) -> Optional[int]
-        # For now, we'll return an error and require manual handling
-        return {
-            'success': False,
-            'error': 'User already exists. Please contact support to upgrade your plan.',
-            'email': email
-        }
+        # User already exists, get their ID
+        user_id = await database_module.get_user_id_by_email(email)
+        if not user_id:
+            return {
+                'success': False,
+                'error': 'User account not found or inactive.',
+                'email': email
+            }
 
     # Create API key for the purchased plan
     api_key = await database_module.create_api_key_for_user(user_id, plan_tier=plan_tier)

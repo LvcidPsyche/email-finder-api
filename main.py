@@ -19,6 +19,10 @@ load_dotenv()
 import database
 import auth
 
+# Import API documentation and error handlers
+from api_docs import API_DESCRIPTION, TAGS_METADATA
+from error_handlers import register_error_handlers
+
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,8 +36,18 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Email Finder API",
     version="2.0.0",
-    description="Find and verify professional email addresses",
-    lifespan=lifespan
+    description=API_DESCRIPTION,
+    lifespan=lifespan,
+    openapi_tags=TAGS_METADATA,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    contact={
+        "name": "API Support",
+        "email": "support@yourapi.com",
+    },
+    license_info={
+        "name": "Proprietary",
+    }
 )
 
 # CORS middleware
@@ -49,6 +63,9 @@ app.add_middleware(
 # Add custom middleware
 app.middleware("http")(auth.rate_limit_middleware)
 app.middleware("http")(auth.log_request_middleware)
+
+# Register error handlers
+register_error_handlers(app)
 
 # Mount static files and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -142,7 +159,7 @@ async def landing_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.get("/health")
+@app.get("/health", tags=["Utility"])
 async def health_check():
     """Health check endpoint."""
     return {
@@ -154,7 +171,7 @@ async def health_check():
 
 # --- Auth endpoints ---
 
-@app.post("/api/auth/register")
+@app.post("/api/auth/register", tags=["Authentication"])
 async def register(body: RegisterRequest):
     """Register a new user."""
     user_id = await database.create_user(body.email, body.password)
@@ -176,7 +193,7 @@ async def register(body: RegisterRequest):
     }
 
 
-@app.post("/api/auth/login")
+@app.post("/api/auth/login", tags=["Authentication"])
 async def login(body: LoginRequest):
     """Login and get JWT token."""
     user = await database.authenticate_user(body.email, body.password)
@@ -195,7 +212,7 @@ async def login(body: LoginRequest):
     }
 
 
-@app.get("/api/usage")
+@app.get("/api/usage", tags=["Authentication"])
 async def get_usage(key_info: dict = Depends(auth.verify_api_key_dependency)):
     """Get usage statistics for the current API key."""
     stats = await database.get_usage_stats(key_info["api_key_id"], days=1)
@@ -207,7 +224,7 @@ async def get_usage(key_info: dict = Depends(auth.verify_api_key_dependency)):
 
 # --- Email finding endpoints ---
 
-@app.post("/api/find-email")
+@app.post("/api/find-email", tags=["Email Finding"], summary="Find email patterns for a person")
 async def find_email(body: FindEmailRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
     domain = body.domain.lower().strip()
     first_name = body.first_name.strip()
@@ -229,7 +246,7 @@ async def find_email(body: FindEmailRequest, key_info: dict = Depends(auth.verif
     }
 
 
-@app.post("/api/verify-domain")
+@app.post("/api/verify-domain", tags=["Verification"], summary="Verify domain mail configuration")
 async def verify_domain(body: VerifyDomainRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
     domain = body.domain.lower().strip()
     if not domain:
@@ -239,7 +256,7 @@ async def verify_domain(body: VerifyDomainRequest, key_info: dict = Depends(auth
     return {"success": True, **result}
 
 
-@app.post("/api/bulk-find")
+@app.post("/api/bulk-find", tags=["Bulk Operations"], summary="Find emails for multiple people")
 async def bulk_find(body: BulkFindRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
     domain = body.domain.lower().strip()
     names = body.names
@@ -314,7 +331,7 @@ class DomainInfoRequest(BaseModel):
     domain: str
 
 
-@app.post("/api/verify-email")
+@app.post("/api/verify-email", tags=["Verification"], summary="Verify email deliverability via SMTP")
 async def verify_single_email(body: VerifyEmailRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
     """Verify a single email address via SMTP (checks if mailbox exists)."""
     result = await verify_email_smtp(body.email)
@@ -324,7 +341,7 @@ async def verify_single_email(body: VerifyEmailRequest, key_info: dict = Depends
     }
 
 
-@app.post("/api/bulk-verify")
+@app.post("/api/bulk-verify", tags=["Bulk Operations"], summary="Verify multiple emails")
 async def bulk_verify_emails(body: BulkVerifyRequest, key_info: dict = Depends(auth.verify_api_key_dependency)):
     """Verify multiple email addresses (max 50 per request)."""
     if len(body.emails) > 50:
@@ -444,3 +461,46 @@ async def export_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={job_type}_results.csv"}
     )
+
+
+# --- Admin endpoints ---
+
+from admin import verify_admin_key, get_system_stats, get_recent_users, get_usage_by_user
+
+@app.get("/api/admin/stats", tags=["Admin"], summary="Get system statistics")
+async def admin_stats(admin_key: str = Depends(verify_admin_key)):
+    """
+    Get comprehensive system statistics (admin only).
+    
+    Requires admin API key in X-Admin-Key header.
+    """
+    stats = await get_system_stats()
+    return {"success": True, **stats}
+
+
+@app.get("/api/admin/recent-users", tags=["Admin"], summary="Get recent users")
+async def admin_recent_users(
+    limit: int = 20,
+    admin_key: str = Depends(verify_admin_key)
+):
+    """
+    Get recently registered users (admin only).
+    
+    Requires admin API key in X-Admin-Key header.
+    """
+    users = await get_recent_users(limit=limit)
+    return {"success": True, "users": users, "count": len(users)}
+
+
+@app.get("/api/admin/top-users", tags=["Admin"], summary="Get top users by usage")
+async def admin_top_users(
+    limit: int = 20,
+    admin_key: str = Depends(verify_admin_key)
+):
+    """
+    Get top users by request volume (admin only).
+    
+    Requires admin API key in X-Admin-Key header.
+    """
+    users = await get_usage_by_user(limit=limit)
+    return {"success": True, "users": users, "count": len(users)}

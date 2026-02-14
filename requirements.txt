@@ -1,0 +1,7 @@
+fastapi==0.129.0
+uvicorn
+httpx
+dnspython
+pydantic
+jinja2
+python-multipart

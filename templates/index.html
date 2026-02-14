@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmailFinder API - Find Any Professional Email in Seconds</title>
+    <meta name="description" content="API-first email discovery platform. Find professional email addresses with pattern detection, MX verification, and bulk processing.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0b1a;
+            --bg-secondary: #111228;
+            --bg-card: #161834;
+            --bg-card-hover: #1c1f45;
+            --text-primary: #f0f0ff;
+            --text-secondary: #a0a3c4;
+            --text-muted: #6b6e94;
+            --accent-blue: #4f7df9;
+            --accent-purple: #8b5cf6;
+            --accent-cyan: #22d3ee;
+            --gradient-primary: linear-gradient(135deg, #4f7df9 0%, #8b5cf6 100%);
+            --gradient-hero: linear-gradient(160deg, #0a0b1a 0%, #161834 40%, #1a1050 100%);
+            --gradient-card: linear-gradient(145deg, #161834 0%, #1c1f45 100%);
+            --border-color: #2a2d52;
+            --border-glow: rgba(79, 125, 249, 0.3);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
+            --radius: 12px;
+            --radius-lg: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* --- Navigation --- */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            padding: 16px 0;
+            background: rgba(10, 11, 26, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.3s ease;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-logo {
+            font-size: 1.4rem;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-cta {
+            background: var(--gradient-primary);
+            color: #fff !important;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 600 !important;
+            transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+        }
+
+        .nav-cta:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(79, 125, 249, 0.4);
+        }
+
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .mobile-toggle span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--text-primary);
+            margin: 6px 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .mobile-toggle.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 6px);
+        }
+
+        .mobile-toggle.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .mobile-toggle.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -6px);
+        }
+
+        /* --- Hero Section --- */
+        .hero {
+            background: var(--gradient-hero);
+            padding: 160px 24px 100px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 50%, rgba(79, 125, 249, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+            animation: heroGlow 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes heroGlow {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-5%, 3%); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 50px;
+            background: rgba(79, 125, 249, 0.1);
+            border: 1px solid rgba(79, 125, 249, 0.3);
+            color: var(--accent-blue);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            letter-spacing: 0.5px;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            letter-spacing: -1.5px;
+        }
+
+        .hero h1 .gradient-text {
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            display: inline-block;
+            padding: 14px 32px;
+            background: var(--gradient-primary);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(79, 125, 249, 0.4);
+        }
+
+        .btn-secondary {
+            display: inline-block;
+            padding: 14px 32px;
+            background: transparent;
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            border: 1px solid var(--border-color);
+            transition: border-color 0.2s ease, background 0.2s ease;
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-blue);
+            background: rgba(79, 125, 249, 0.05);
+        }
+
+        /* --- Section Styles --- */
+        .section {
+            padding: 100px 24px;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* --- Live Demo Section --- */
+        #demo {
+            background: var(--bg-secondary);
+        }
+
+        .demo-wrapper {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .demo-card {
+            background: var(--gradient-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .demo-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .demo-form input {
+            flex: 1;
+            padding: 14px 18px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .demo-form input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(79, 125, 249, 0.1);
+        }
+
+        .demo-form input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .demo-submit {
+            padding: 14px 24px;
+            background: var(--gradient-primary);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .demo-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(79, 125, 249, 0.4);
+        }
+
+        .demo-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .demo-results {
+            margin-top: 24px;
+            display: none;
+        }
+
+        .demo-results.visible {
+            display: block;
+            animation: fadeSlideIn 0.4s ease;
+        }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .results-header h4 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .mx-badge {
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .mx-badge.valid {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--success);
+        }
+
+        .mx-badge.invalid {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--warning);
+        }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid transparent;
+            transition: border-color 0.2s ease;
+            animation: fadeSlideIn 0.3s ease;
+        }
+
+        .result-item:hover {
+            border-color: var(--border-color);
+        }
+
+        .result-email {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+        }
+
+        .result-confidence {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .result-confidence.high {
+            color: var(--success);
+        }
+
+        .result-confidence.medium {
+            color: var(--warning);
+        }
+
+        .demo-error {
+            margin-top: 16px;
+            padding: 12px 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            color: #f87171;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .demo-error.visible {
+            display: block;
+            animation: fadeSlideIn 0.3s ease;
+        }
+
+        /* --- Features Section --- */
+        #features {
+            background: var(--bg-primary);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--gradient-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 36px;
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-glow);
+            box-shadow: 0 12px 40px rgba(79, 125, 249, 0.1);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* --- Pricing Section --- */
+        #pricing {
+            background: var(--bg-secondary);
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            align-items: start;
+        }
+
+        .pricing-card {
+            background: var(--gradient-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 40px 32px;
+            text-align: center;
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .pricing-card.featured {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 40px rgba(79, 125, 249, 0.15);
+        }
+
+        .pricing-card.featured::before {
+            content: 'Most Popular';
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gradient-primary);
+            color: #fff;
+            padding: 4px 20px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .pricing-tier {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        .pricing-price {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            letter-spacing: -2px;
+        }
+
+        .pricing-price span {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            letter-spacing: 0;
+        }
+
+        .pricing-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 28px;
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 32px;
+            text-align: left;
+        }
+
+        .pricing-features li {
+            padding: 8px 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pricing-features li::before {
+            content: '';
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            min-width: 18px;
+            background: rgba(52, 211, 153, 0.15);
+            border-radius: 50%;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2334d399'%3E%3Cpath fill-rule='evenodd' d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+            background-size: 12px;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .pricing-cta {
+            display: block;
+            width: 100%;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .pricing-cta.primary {
+            background: var(--gradient-primary);
+            color: #fff;
+        }
+
+        .pricing-cta.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(79, 125, 249, 0.4);
+        }
+
+        .pricing-cta.outline {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .pricing-cta.outline:hover {
+            border-color: var(--accent-blue);
+            background: rgba(79, 125, 249, 0.05);
+        }
+
+        /* --- API Docs Section --- */
+        #docs {
+            background: var(--bg-primary);
+        }
+
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .docs-card {
+            background: var(--gradient-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .docs-card-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .docs-card-header h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .docs-method {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .docs-method.post {
+            background: rgba(79, 125, 249, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .docs-method.get {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--success);
+        }
+
+        .docs-code {
+            padding: 20px 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .docs-code .cmd {
+            color: var(--accent-cyan);
+        }
+
+        .docs-code .flag {
+            color: var(--accent-purple);
+        }
+
+        .docs-code .string {
+            color: var(--success);
+        }
+
+        .docs-code .url {
+            color: var(--text-primary);
+        }
+
+        /* --- Footer --- */
+        .footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 40px 24px;
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .footer-logo {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .footer-text {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 968px) {
+            .hero h1 {
+                font-size: 2.6rem;
+            }
+
+            .features-grid,
+            .pricing-grid,
+            .docs-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-card.featured {
+                order: -1;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 16px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background: var(--bg-secondary);
+                border-bottom: 1px solid var(--border-color);
+                flex-direction: column;
+                padding: 24px;
+                gap: 16px;
+            }
+
+            .nav-links.open {
+                display: flex;
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+
+            .hero {
+                padding: 120px 16px 60px;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .section {
+                padding: 60px 16px;
+            }
+
+            .section-header h2 {
+                font-size: 1.8rem;
+            }
+
+            .input-row {
+                flex-direction: column;
+            }
+
+            .demo-card {
+                padding: 24px;
+            }
+
+            .footer-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">EmailFinder API</a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#demo">Demo</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#docs">API Docs</a></li>
+                <li><a href="#pricing" class="nav-cta">Get API Key</a></li>
+            </ul>
+            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">API-First Email Discovery</div>
+            <h1>Find Any Professional Email <span class="gradient-text">in Seconds</span></h1>
+            <p>Discover verified professional email addresses at scale. Our API uses intelligent pattern detection and real-time MX verification to deliver accurate results you can trust.</p>
+            <div class="hero-buttons">
+                <a href="#demo" class="btn-primary">Try Live Demo</a>
+                <a href="#docs" class="btn-secondary">View API Docs</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Demo Section -->
+    <section class="section" id="demo">
+        <div class="container">
+            <div class="section-header">
+                <h2>Try It Now</h2>
+                <p>Enter a domain and name below to see the Email Finder API in action. No signup required.</p>
+            </div>
+            <div class="demo-wrapper">
+                <div class="demo-card">
+                    <form class="demo-form" id="demoForm">
+                        <input type="text" id="demoDomain" placeholder="Domain (e.g. google.com)" required>
+                        <div class="input-row">
+                            <input type="text" id="demoFirstName" placeholder="First Name" required>
+                            <input type="text" id="demoLastName" placeholder="Last Name" required>
+                        </div>
+                        <button type="submit" class="demo-submit" id="demoSubmit">Find Email Addresses</button>
+                    </form>
+                    <div class="demo-error" id="demoError"></div>
+                    <div class="demo-results" id="demoResults">
+                        <div class="results-header">
+                            <h4>Results for <span id="resultsName"></span></h4>
+                            <span class="mx-badge" id="mxBadge"></span>
+                        </div>
+                        <div id="resultsBody"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Powerful Features</h2>
+                <p>Everything you need to find and verify professional email addresses at scale.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F50D;</div>
+                    <h3>Email Pattern Detection</h3>
+                    <p>Our algorithm generates the most likely email address patterns for any domain. We analyze first.last, flast, firstl, and 10+ other common formats with confidence scoring.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x2705;</div>
+                    <h3>MX Verification</h3>
+                    <p>Real-time DNS lookups verify that a domain has valid MX records and actually accepts email. Know before you send whether your message will be delivered.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x26A1;</div>
+                    <h3>Bulk Processing</h3>
+                    <p>Process up to 100 names per API call with our bulk endpoint. Perfect for enriching CRM data, building prospect lists, or powering outreach campaigns at scale.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#x1F527;</div>
+                    <h3>API-First Design</h3>
+                    <p>Clean RESTful endpoints with JSON responses. Simple API key authentication, comprehensive error handling, and detailed documentation make integration effortless.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="section" id="pricing">
+        <div class="container">
+            <div class="section-header">
+                <h2>Simple, Transparent Pricing</h2>
+                <p>Start free with our demo key. Upgrade when you're ready to scale.</p>
+            </div>
+            <div class="pricing-grid">
+                <!-- Starter -->
+                <div class="pricing-card">
+                    <div class="pricing-tier">Starter</div>
+                    <div class="pricing-price">$29<span>/mo</span></div>
+                    <div class="pricing-desc">Perfect for solo founders and small teams</div>
+                    <ul class="pricing-features">
+                        <li>1,000 email lookups / month</li>
+                        <li>MX record verification</li>
+                        <li>Pattern detection</li>
+                        <li>Single API key</li>
+                        <li>Email support</li>
+                    </ul>
+                    <a href="https://gumroad.com/l/emailfinder-starter" class="pricing-cta outline" target="_blank">Get Started</a>
+                </div>
+                <!-- Pro -->
+                <div class="pricing-card featured">
+                    <div class="pricing-tier">Pro</div>
+                    <div class="pricing-price">$79<span>/mo</span></div>
+                    <div class="pricing-desc">Best for growing teams and agencies</div>
+                    <ul class="pricing-features">
+                        <li>10,000 email lookups / month</li>
+                        <li>MX record verification</li>
+                        <li>Pattern detection</li>
+                        <li>Bulk processing endpoint</li>
+                        <li>Multiple API keys</li>
+                        <li>Priority support</li>
+                    </ul>
+                    <a href="https://gumroad.com/l/emailfinder-pro" class="pricing-cta primary" target="_blank">Get Started</a>
+                </div>
+                <!-- Enterprise -->
+                <div class="pricing-card">
+                    <div class="pricing-tier">Enterprise</div>
+                    <div class="pricing-price">$199<span>/mo</span></div>
+                    <div class="pricing-desc">Unlimited power for large organizations</div>
+                    <ul class="pricing-features">
+                        <li>Unlimited email lookups</li>
+                        <li>MX record verification</li>
+                        <li>Pattern detection</li>
+                        <li>Bulk processing endpoint</li>
+                        <li>Unlimited API keys</li>
+                        <li>Dedicated support</li>
+                        <li>Custom integrations</li>
+                    </ul>
+                    <a href="https://gumroad.com/l/emailfinder-enterprise" class="pricing-cta outline" target="_blank">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- API Docs Section -->
+    <section class="section" id="docs">
+        <div class="container">
+            <div class="section-header">
+                <h2>API Documentation</h2>
+                <p>Get started in minutes. Here are example requests for each endpoint.</p>
+            </div>
+            <div class="docs-grid">
+                <div class="docs-card">
+                    <div class="docs-card-header">
+                        <h4>Find Email</h4>
+                        <span class="docs-method post">POST</span>
+                    </div>
+                    <div class="docs-code"><span class="cmd">curl</span> <span class="flag">-X POST</span> <span class="url">https://api.example.com/api/find-email</span> \
+  <span class="flag">-H</span> <span class="string">"X-API-Key: your-api-key"</span> \
+  <span class="flag">-H</span> <span class="string">"Content-Type: application/json"</span> \
+  <span class="flag">-d</span> <span class="string">'{
+    "domain": "google.com",
+    "first_name": "John",
+    "last_name": "Doe"
+  }'</span></div>
+                </div>
+                <div class="docs-card">
+                    <div class="docs-card-header">
+                        <h4>Verify Domain</h4>
+                        <span class="docs-method post">POST</span>
+                    </div>
+                    <div class="docs-code"><span class="cmd">curl</span> <span class="flag">-X POST</span> <span class="url">https://api.example.com/api/verify-domain</span> \
+  <span class="flag">-H</span> <span class="string">"X-API-Key: your-api-key"</span> \
+  <span class="flag">-H</span> <span class="string">"Content-Type: application/json"</span> \
+  <span class="flag">-d</span> <span class="string">'{
+    "domain": "google.com"
+  }'</span></div>
+                </div>
+                <div class="docs-card">
+                    <div class="docs-card-header">
+                        <h4>Bulk Find</h4>
+                        <span class="docs-method post">POST</span>
+                    </div>
+                    <div class="docs-code"><span class="cmd">curl</span> <span class="flag">-X POST</span> <span class="url">https://api.example.com/api/bulk-find</span> \
+  <span class="flag">-H</span> <span class="string">"X-API-Key: your-api-key"</span> \
+  <span class="flag">-H</span> <span class="string">"Content-Type: application/json"</span> \
+  <span class="flag">-d</span> <span class="string">'{
+    "domain": "google.com",
+    "names": [
+      {"first_name": "John", "last_name": "Doe"},
+      {"first_name": "Jane", "last_name": "Smith"}
+    ]
+  }'</span></div>
+                </div>
+                <div class="docs-card">
+                    <div class="docs-card-header">
+                        <h4>Get Patterns</h4>
+                        <span class="docs-method get">GET</span>
+                    </div>
+                    <div class="docs-code"><span class="cmd">curl</span> <span class="flag">-X GET</span> <span class="url">https://api.example.com/api/patterns/google.com</span> \
+  <span class="flag">-H</span> <span class="string">"X-API-Key: your-api-key"</span>
+
+
+<span class="comment"># Response:</span>
+<span class="string">{
+  "success": true,
+  "domain": "google.com",
+  "patterns": [
+    {"pattern": "first.last", "commonality": "Very Common"},
+    {"pattern": "flast", "commonality": "Common"}
+  ]
+}</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-logo">EmailFinder API</div>
+            <div class="footer-text">&copy; 2024 EmailFinder API. All rights reserved.</div>
+            <ul class="footer-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#docs">API Docs</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <script>
+        // --- Mobile Menu Toggle ---
+        const mobileToggle = document.getElementById('mobileToggle');
+        const navLinks = document.getElementById('navLinks');
+
+        mobileToggle.addEventListener('click', function () {
+            this.classList.toggle('active');
+            navLinks.classList.toggle('open');
+        });
+
+        // Close mobile menu when a link is clicked
+        navLinks.querySelectorAll('a').forEach(function (link) {
+            link.addEventListener('click', function () {
+                mobileToggle.classList.remove('active');
+                navLinks.classList.remove('open');
+            });
+        });
+
+        // --- Smooth Scroll for Nav Links ---
+        document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                var targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                var target = document.querySelector(targetId);
+                if (target) {
+                    var offset = 80;
+                    var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+                    window.scrollTo({ top: top, behavior: 'smooth' });
+                }
+            });
+        });
+
+        // --- Live Demo Form ---
+        var demoForm = document.getElementById('demoForm');
+        var demoSubmit = document.getElementById('demoSubmit');
+        var demoResults = document.getElementById('demoResults');
+        var demoError = document.getElementById('demoError');
+        var resultsName = document.getElementById('resultsName');
+        var mxBadge = document.getElementById('mxBadge');
+        var resultsBody = document.getElementById('resultsBody');
+
+        demoForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            var domain = document.getElementById('demoDomain').value.trim();
+            var firstName = document.getElementById('demoFirstName').value.trim();
+            var lastName = document.getElementById('demoLastName').value.trim();
+
+            if (!domain || !firstName || !lastName) return;
+
+            // Reset state
+            demoResults.classList.remove('visible');
+            demoError.classList.remove('visible');
+            demoSubmit.disabled = true;
+            demoSubmit.textContent = 'Searching...';
+
+            fetch('/api/find-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': 'demo-key-2024'
+                },
+                body: JSON.stringify({
+                    domain: domain,
+                    first_name: firstName,
+                    last_name: lastName
+                })
+            })
+            .then(function (res) {
+                if (!res.ok) {
+                    return res.json().then(function (data) {
+                        throw new Error(data.detail || 'Request failed');
+                    });
+                }
+                return res.json();
+            })
+            .then(function (data) {
+                resultsName.textContent = data.person.first_name + ' ' + data.person.last_name + ' @ ' + data.domain;
+
+                if (data.domain_accepts_email) {
+                    mxBadge.textContent = 'MX Verified';
+                    mxBadge.className = 'mx-badge valid';
+                } else {
+                    mxBadge.textContent = 'MX Not Found';
+                    mxBadge.className = 'mx-badge invalid';
+                }
+
+                resultsBody.innerHTML = '';
+
+                var emails = data.emails.slice(0, 8);
+                emails.forEach(function (item, index) {
+                    var div = document.createElement('div');
+                    div.className = 'result-item';
+                    div.style.animationDelay = (index * 0.05) + 's';
+
+                    var confClass = 'result-confidence';
+                    if (item.confidence >= 80) confClass += ' high';
+                    else if (item.confidence >= 60) confClass += ' medium';
+
+                    div.innerHTML =
+                        '<span class="result-email">' + escapeHtml(item.email) + '</span>' +
+                        '<span class="' + confClass + '">' + item.confidence + '% match</span>';
+
+                    resultsBody.appendChild(div);
+                });
+
+                demoResults.classList.add('visible');
+            })
+            .catch(function (err) {
+                demoError.textContent = 'Error: ' + err.message;
+                demoError.classList.add('visible');
+            })
+            .finally(function () {
+                demoSubmit.disabled = false;
+                demoSubmit.textContent = 'Find Email Addresses';
+            });
+        });
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(text));
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
